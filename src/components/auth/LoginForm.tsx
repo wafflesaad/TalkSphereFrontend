@@ -54,8 +54,8 @@ const LoginForm = ({ onViewChange }: LoginFormProps) => {
         description: "Logged in successfully!",
       });
 
-      // Redirect to home page or dashboard after successful login
-      navigate("/");
+      // Redirect to profile page after successful login
+      navigate("/profile");
     } catch (error) {
       console.error("Login error:", error);
       toast({

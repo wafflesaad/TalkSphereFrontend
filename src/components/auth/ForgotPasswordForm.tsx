@@ -67,7 +67,7 @@ const ForgotPasswordForm = ({ onViewChange }: ForgotPasswordFormProps) => {
       <ResetPasswordOTPForm
         email={email}
         onBack={() => setShowOTPForm(false)}
-        onOTPVerified={handleOTPVerified}
+        onViewChange={onViewChange}
       />
     );
   }
