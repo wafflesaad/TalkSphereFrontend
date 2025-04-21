@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff } from "lucide-react";
+import axios from "axios";
 
 interface LoginFormProps {
   onViewChange: (view: "login" | "signup" | "forgot-password") => void;
@@ -11,12 +12,50 @@ interface LoginFormProps {
 
 const LoginForm = ({ onViewChange }: LoginFormProps) => {
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await axios.post("http://localhost:4000/api/auth/login", {
+        email,
+        password,
+      });
+
+      if (response.data.success) {
+        // Redirect or switch view on success
+        alert("Login successful!");
+        // You could store the token or move to the dashboard
+      } else {
+        setError(response.data.message || "Login failed. Please check your credentials.");
+      }
+    } catch (err) {
+      setError("Something went wrong. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
 
   return (
-    <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
-      <div className="space-y-2">
+<form onSubmit={handleSubmit} className="space-y-4">
+<div className="space-y-2">
         <Label htmlFor="email">Email</Label>
-        <Input id="email" type="email" placeholder="Enter your email" required />
+        <Input
+          id="email"
+          type="email"
+          placeholder="Enter your email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
@@ -25,8 +64,11 @@ const LoginForm = ({ onViewChange }: LoginFormProps) => {
             id="password"
             type={showPassword ? "text" : "password"}
             placeholder="Enter your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             required
           />
+
           <Button
             type="button"
             variant="ghost"
@@ -38,9 +80,13 @@ const LoginForm = ({ onViewChange }: LoginFormProps) => {
           </Button>
         </div>
       </div>
-      <Button type="submit" className="w-full">
-        Log in
+      {error && <p className="text-red-500">{error}</p>}
+
+      <Button type="submit" className="w-full" disabled={loading}>
+        {loading ? "Logging in..." : "Log in"}
       </Button>
+
+
       <div className="mt-4 text-center space-y-2">
         <Button
           variant="link"
