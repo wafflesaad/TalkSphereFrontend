@@ -5,14 +5,14 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Eye, EyeOff } from "lucide-react";
 
-interface ResetPasswordOTPFormProps {
+interface NewPasswordFormProps {
   email: string;
+  otp: string;
   onBack: () => void;
   onViewChange: (view: "login" | "signup" | "forgot-password") => void;
 }
 
-const ResetPasswordOTPForm = ({ email, onBack, onViewChange }: ResetPasswordOTPFormProps) => {
-  const [otp, setOtp] = useState("");
+const NewPasswordForm = ({ email, otp, onBack, onViewChange }: NewPasswordFormProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -78,58 +78,8 @@ const ResetPasswordOTPForm = ({ email, onBack, onViewChange }: ResetPasswordOTPF
     }
   };
 
-  const handleResendOTP = async () => {
-    try {
-      const response = await fetch("http://localhost:4000/api/auth/send_reset_otp", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.message || "Failed to resend OTP");
-      }
-
-      toast({
-        title: "Success",
-        description: "OTP has been resent to your email",
-      });
-    } catch (error) {
-      console.error("Resend OTP error:", error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to resend OTP",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="otp">Verification Code</Label>
-        <Input
-          id="otp"
-          type="text"
-          placeholder="Enter 6-digit code"
-          required
-          maxLength={6}
-          value={otp}
-          onChange={(e) => setOtp(e.target.value)}
-        />
-        <p className="text-sm text-muted-foreground">
-          We've sent a verification code to {email}
-        </p>
-      </div>
       <div className="space-y-2">
         <Label htmlFor="newPassword">New Password</Label>
         <div className="relative">
@@ -167,18 +117,7 @@ const ResetPasswordOTPForm = ({ email, onBack, onViewChange }: ResetPasswordOTPF
         {isLoading ? "Resetting Password..." : "Reset Password"}
       </Button>
       <div className="text-center text-sm">
-        <Button
-          variant="link"
-          onClick={handleResendOTP}
-          className="text-sm"
-        >
-          Resend Code
-        </Button>
-        <Button
-          variant="link"
-          onClick={onBack}
-          className="text-sm"
-        >
+        <Button variant="link" onClick={onBack} className="text-sm">
           Back
         </Button>
       </div>
@@ -186,4 +125,4 @@ const ResetPasswordOTPForm = ({ email, onBack, onViewChange }: ResetPasswordOTPF
   );
 };
 
-export default ResetPasswordOTPForm; 
+export default NewPasswordForm; 
