@@ -19,20 +19,17 @@ const UserProfile = () => {
     const fetchUserData = async () => {
       try {
         const response = await fetch("http://localhost:4000/api/user/data", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          method: "GET",
           credentials: "include",
         });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
 
         const data = await response.json();
 
         if (!data.success) {
+          if (data.message === "Token not found!" || data.message.includes("token")) {
+            navigate("/login");
+            return;
+          }
           throw new Error(data.message || "Failed to fetch user data");
         }
 
@@ -44,10 +41,6 @@ const UserProfile = () => {
           description: error instanceof Error ? error.message : "Failed to fetch user data",
           variant: "destructive",
         });
-        // Redirect to login if there's an authentication error
-        if (error instanceof Error && (error.message.includes('token') || error.message.includes('authentication'))) {
-          navigate("/");
-        }
       } finally {
         setIsLoading(false);
       }
