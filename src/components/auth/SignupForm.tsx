@@ -73,17 +73,18 @@ const SignupForm = ({ onViewChange }: SignupFormProps) => {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid gap-4">
         <div className="space-y-2">
-          <Label htmlFor="name">Full Name</Label>
+          <Label htmlFor="name" className="text-sm sm:text-base">Full Name</Label>
           <Input
             id="name"
             placeholder="Enter your full name"
             required
             value={formData.name}
             onChange={handleInputChange}
+            className="h-10 sm:h-11 text-sm sm:text-base"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email" className="text-sm sm:text-base">Email</Label>
           <Input
             id="email"
             type="email"
@@ -91,10 +92,11 @@ const SignupForm = ({ onViewChange }: SignupFormProps) => {
             required
             value={formData.email}
             onChange={handleInputChange}
+            className="h-10 sm:h-11 text-sm sm:text-base"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password" className="text-sm sm:text-base">Password</Label>
           <div className="relative">
             <Input
               id="password"
@@ -103,12 +105,13 @@ const SignupForm = ({ onViewChange }: SignupFormProps) => {
               required
               value={formData.password}
               onChange={handleInputChange}
+              className="h-10 sm:h-11 text-sm sm:text-base pr-10"
             />
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="absolute right-2 top-1/2 -translate-y-1/2"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 sm:h-9 sm:w-9"
               onClick={() => setShowPassword(!showPassword)}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -116,12 +119,20 @@ const SignupForm = ({ onViewChange }: SignupFormProps) => {
           </div>
         </div>
       </div>
-      <Button type="submit" className="w-full" disabled={isLoading}>
+      <Button 
+        type="submit" 
+        className="w-full h-10 sm:h-11 text-sm sm:text-base" 
+        disabled={isLoading}
+      >
         {isLoading ? "Creating account..." : "Create account"}
       </Button>
-      <div className="text-center text-sm">
+      <div className="text-center text-xs sm:text-sm">
         Already have an account?{" "}
-        <Button variant="link" onClick={() => onViewChange("login")}>
+        <Button 
+          variant="link" 
+          onClick={() => onViewChange("login")}
+          className="text-xs sm:text-sm px-2 py-1"
+        >
           Log in
         </Button>
       </div>

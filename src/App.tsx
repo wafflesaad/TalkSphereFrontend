@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import AuthForm from "./components/auth/AuthForm";
 import UserProfile from "./components/UserProfile";
 import VerifyEmailForm from "./components/VerifyEmailForm";
+import ChatRoom from "./components/ChatRoom";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +22,7 @@ const App = () => (
           <Route path="/" element={<AuthForm />} />
           <Route path="/profile" element={<UserProfile />} />
           <Route path="/verify-email" element={<VerifyEmailForm />} />
+          <Route path="/chatroom" element={<ChatRoom />} />
           <Route path="/" element={<Index />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

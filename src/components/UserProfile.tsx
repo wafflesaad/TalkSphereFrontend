@@ -4,13 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut, Users, Search, X, UserPlus, UserCheck, UserMinus } from "lucide-react";
+import { LogOut, Users, Search, X, UserPlus, UserCheck, UserMinus, MessageSquare } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import TopBar from "./TopBar";
 
 interface UserData {
   name: string;
   isAccountVerified: boolean;
   email: string;
+  profilePicture?: string;
+  bio?: string;
+  interests?: string[];
 }
 
 interface SearchResult {
@@ -342,239 +346,133 @@ const UserProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top Navigation Bar */}
-      <nav className="bg-white shadow-sm fixed w-full top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Left section - Search */}
-            <div className="flex items-center">
-              <div className="relative">
-                <Input
-                  type="email"
-                  placeholder="Search users..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-64 pr-10"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 hover:bg-transparent"
-                  onClick={handleSearch}
-                  disabled={isSearching}
-                >
-                  <Search className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+    <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-200">
+      <TopBar 
+        activeSection={activeSection}
+        onSectionClick={handleSectionClick}
+        friendRequestsCount={friendRequests.length}
+        showMessageButton={true}
+      />
 
-            {/* Center section - Title */}
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-indigo-600">TalkSphere</h1>
-            </div>
-
-            {/* Right section */}
-            <div className="flex items-center space-x-4">
-              {/* Friend Requests Button */}
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className={`relative ${activeSection === 'requests' ? 'bg-gray-100' : ''}`}
-                onClick={() => handleSectionClick('requests')}
-              >
-                <UserPlus className="h-5 w-5" />
-                {friendRequests.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                    {friendRequests.length}
-                  </span>
-                )}
-              </Button>
-
-              {/* Friends Button */}
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className={activeSection === 'friends' ? 'bg-gray-100' : ''}
-                onClick={() => handleSectionClick('friends')}
-              >
-                <UserCheck className="h-5 w-5" />
-              </Button>
-
-              {/* User Profile */}
-              <div className="flex items-center space-x-2">
-                <Avatar>
-                  <AvatarImage src="" />
-                  <AvatarFallback>{userData.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-medium">{userData.name}</span>
-              </div>
-
-              {/* Logout Button */}
-              <Button variant="ghost" size="icon" onClick={handleLogout} className="hover:bg-gray-100">
-                <LogOut className="h-5 w-5" />
-              </Button>
+      <div className="max-w-4xl mx-auto px-4 py-8 pt-24">
+        <Card className="p-6 bg-white dark:bg-gray-900 transition-colors duration-200">
+          <div className="flex items-center space-x-4">
+            <Avatar className="h-20 w-20">
+              <AvatarImage src={userData?.profilePicture} />
+              <AvatarFallback className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                {userData?.name?.charAt(0) || "U"}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{userData?.name}</h1>
+              <p className="text-gray-500 dark:text-gray-400">{userData?.email}</p>
             </div>
           </div>
-        </div>
-      </nav>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 mt-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Profile Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <div className="mt-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">About</h2>
+            <p className="text-gray-600 dark:text-gray-300">{userData?.bio || "No bio yet"}</p>
+          </div>
+
+          <div className="mt-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Interests</h2>
+            <div className="flex flex-wrap gap-2">
+              {userData?.interests?.map((interest, index) => (
+                <span
+                  key={index}
+                  className="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-full text-sm"
+                >
+                  {interest}
+                </span>
+              ))}
+            </div>
+          </div>
+        </Card>
+
+        {/* Friend Requests Section */}
+        {activeSection === 'requests' && (
+          <div className="mt-6">
+            <Card className="p-6 bg-white dark:bg-gray-900 transition-colors duration-200">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Friend Requests</h2>
               <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-medium">Name</h3>
-                  <p className="text-gray-600">{userData.name}</p>
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium">Email</h3>
-                  <p className="text-gray-600">{userData.email}</p>
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium">Account Status</h3>
-                  {userData.isAccountVerified ? (
-                    <p className="text-green-600">Verified</p>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-red-600">Not Verified</p>
-                      <Button onClick={() => navigate("/verify-email")}>
-                        Verify Account
+                {friendRequests.map((request) => (
+                  <div
+                    key={request.email}
+                    className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg transition-colors duration-200"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Avatar>
+                        <AvatarFallback className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                          {request.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-gray-100">{request.name}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{request.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAcceptRequest(request.email)}
+                        className="text-green-600 dark:text-green-400 border-green-600 dark:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
+                      >
+                        Accept
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRejectRequest(request.email)}
+                        className="text-red-600 dark:text-red-400 border-red-600 dark:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      >
+                        Reject
                       </Button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                ))}
               </div>
-            </CardContent>
-          </Card>
+            </Card>
+          </div>
+        )}
 
-          {/* Search Results */}
-          {searchResults.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Search Results</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {searchResults.map((result) => (
-                    <div key={result.email} className="border rounded-lg p-4 space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <Avatar>
-                          <AvatarFallback>{result.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{result.name}</p>
-                          <p className="text-sm text-gray-500">{result.email}</p>
-                        </div>
+        {/* Friends Section */}
+        {activeSection === 'friends' && (
+          <div className="mt-6">
+            <Card className="p-6 bg-white dark:bg-gray-900 transition-colors duration-200">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Friends</h2>
+              <div className="space-y-4">
+                {friends.map((friend) => (
+                  <div
+                    key={friend.email}
+                    className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg transition-colors duration-200"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Avatar>
+                        <AvatarFallback className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                          {friend.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-gray-100">{friend.name}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{friend.email}</p>
                       </div>
-                      {!result.isFriend && (
-                        <Button 
-                          className="w-full" 
-                          onClick={() => handleSendRequest(result.email)}
-                        >
-                          Send Friend Request
-                        </Button>
-                      )}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRemoveFriend(friend.email)}
+                      className="text-red-600 dark:text-red-400 border-red-600 dark:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </Card>
-          )}
-
-          {/* Friend Requests */}
-          {activeSection === 'requests' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Friend Requests</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {friendRequests.length === 0 ? (
-                    <p className="text-sm text-gray-500">No pending requests</p>
-                  ) : (
-                    friendRequests.map((request) => (
-                      <div key={request.email} className="border rounded-lg p-4 space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <Avatar>
-                            <AvatarFallback>{request.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">{request.name}</p>
-                            <p className="text-sm text-gray-500">{request.email}</p>
-                          </div>
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button 
-                            variant="outline" 
-                            className="flex-1"
-                            onClick={() => handleAcceptRequest(request.email)}
-                          >
-                            Accept
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            className="flex-1"
-                            onClick={() => handleRejectRequest(request.email)}
-                          >
-                            Reject
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Friends List */}
-          {activeSection === 'friends' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Friends</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {friends.length === 0 ? (
-                    <p className="text-sm text-gray-500">No friends yet</p>
-                  ) : (
-                    friends.map((friend) => (
-                      <div key={friend.email} className="border rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Avatar>
-                              <AvatarFallback>{friend.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">{friend.name}</p>
-                              <p className="text-sm text-gray-500">{friend.email}</p>
-                            </div>
-                          </div>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => handleRemoveFriend(friend.email)}
-                            className="hover:bg-red-100 hover:text-red-600"
-                          >
-                            <UserMinus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </main>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

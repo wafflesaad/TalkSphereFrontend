@@ -75,7 +75,7 @@ const ForgotPasswordForm = ({ onViewChange }: ForgotPasswordFormProps) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email" className="text-sm sm:text-base">Email</Label>
         <Input
           id="email"
           type="email"
@@ -83,14 +83,23 @@ const ForgotPasswordForm = ({ onViewChange }: ForgotPasswordFormProps) => {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          className="h-10 sm:h-11 text-sm sm:text-base"
         />
       </div>
-      <Button type="submit" className="w-full" disabled={isLoading}>
+      <Button 
+        type="submit" 
+        className="w-full h-10 sm:h-11 text-sm sm:text-base" 
+        disabled={isLoading}
+      >
         {isLoading ? "Sending OTP..." : "Send Reset Code"}
       </Button>
-      <div className="text-center text-sm">
+      <div className="text-center text-xs sm:text-sm">
         Remember your password?{" "}
-        <Button variant="link" onClick={() => onViewChange("login")}>
+        <Button 
+          variant="link" 
+          onClick={() => onViewChange("login")}
+          className="text-xs sm:text-sm px-2 py-1"
+        >
           Log in
         </Button>
       </div>
