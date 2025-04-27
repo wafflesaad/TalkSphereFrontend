@@ -7,6 +7,10 @@ import { Card } from "@/components/ui/card";
 import { Send, LogOut, Users, Search, X, UserPlus, UserCheck, UserMinus, MessageSquare, Phone, Video } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import TopBar from "./TopBar";
+import socket from "@/utils/io";
+import { error } from "console";
+
+socket.connect()
 
 interface Friend {
   email: string;
@@ -47,6 +51,11 @@ const ChatRoom = () => {
   }, [location.search, friends]);
 
   useEffect(() => {
+
+    socket.on("receiveMessage", (message)=>{
+      alert(message)
+    })
+
     // Fetch friends list
     const fetchFriends = async () => {
       try {
@@ -70,8 +79,38 @@ const ChatRoom = () => {
     fetchFriends();
   }, []);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
 
+    try{
+      const response = await fetch("http://localhost:4000/api/user/data", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      const data = await response.json();
+
+      if (!data.success){
+        throw new Error(data.message);
+      }
+
+      let email = data.userData.email;
+
+
+      let payload = {
+        sender: email,
+        receiver: selectedFriend.email,
+        message: newMessage
+      }
+      
+      socket.emit("sendMessage", payload);
+
+
+    }catch(e){
+      console.log(e.message);
+    }
+
+
+    
 
     // Add message to local state
     setMessages(prev => [...prev, {
@@ -107,8 +146,35 @@ const ChatRoom = () => {
     setActiveSection(activeSection === section ? 'none' : section);
   };
 
-  const handleFriendSelect = (friend: Friend) => {
+  const handleFriendSelect = async (friend: Friend) => {
     setSelectedFriend(friend);
+
+    try{
+      const response = await fetch("http://localhost:4000/api/user/data", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      const data = await response.json();
+
+      if (!data.success){
+        throw new Error(data.message);
+      }
+
+      let email = data.userData.email;
+
+      let payload = {
+        sender: email,
+        receiver: friend.email
+      }
+      
+      socket.emit('joinRoom', payload);
+
+
+    }catch(e){
+      alert(e.message);
+    }
+
     // Update URL with friend's email
     navigate(`/chatroom?friend=${encodeURIComponent(friend.email)}`);
   };

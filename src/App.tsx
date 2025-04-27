@@ -9,6 +9,8 @@ import AuthForm from "./components/auth/AuthForm";
 import UserProfile from "./components/UserProfile";
 import VerifyEmailForm from "./components/VerifyEmailForm";
 import ChatRoom from "./components/ChatRoom";
+import socket from "./utils/io";
+
 
 const queryClient = new QueryClient();
 
