@@ -36,6 +36,29 @@ const ChatRoom = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Load chat history from localStorage when component mounts or selectedFriend changes
+  useEffect(() => {
+    if (selectedFriend) {
+      const savedChat = localStorage.getItem(`chat_${selectedFriend.email}`);
+      if (savedChat) {
+        const parsedMessages = JSON.parse(savedChat).map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+        setMessages(parsedMessages);
+      } else {
+        setMessages([]);
+      }
+    }
+  }, [selectedFriend]);
+
+  // Save chat history to localStorage whenever messages change
+  useEffect(() => {
+    if (selectedFriend && messages.length > 0) {
+      localStorage.setItem(`chat_${selectedFriend.email}`, JSON.stringify(messages));
+    }
+  }, [messages, selectedFriend]);
+
   useEffect(() => {
     // Check if we have a friend email in the URL
     const params = new URLSearchParams(location.search);
@@ -48,14 +71,23 @@ const ChatRoom = () => {
         setSelectedFriend(friend);
       }
     }
+
+    // Set up socket event listener for received messages
+    socket.on("receiveMessage", (message) => {
+      setMessages(prev => [...prev, {
+        sender: "friend",
+        content: message,
+        timestamp: new Date()
+      }]);
+    });
+
+    // Clean up socket listener when component unmounts
+    return () => {
+      socket.off("receiveMessage");
+    };
   }, [location.search, friends]);
 
   useEffect(() => {
-
-    socket.on("receiveMessage", (message)=>{
-      alert(message)
-    })
-
     // Fetch friends list
     const fetchFriends = async () => {
       try {
@@ -80,8 +112,9 @@ const ChatRoom = () => {
   }, []);
 
   const handleSendMessage = async () => {
+    if (!newMessage.trim()) return;
 
-    try{
+    try {
       const response = await fetch("http://localhost:4000/api/user/data", {
         method: "GET",
         credentials: "include",
@@ -89,52 +122,32 @@ const ChatRoom = () => {
 
       const data = await response.json();
 
-      if (!data.success){
+      if (!data.success) {
         throw new Error(data.message);
       }
 
       let email = data.userData.email;
 
-
       let payload = {
         sender: email,
         receiver: selectedFriend.email,
-        message: newMessage
-      }
+        message: newMessage,
+      };
       
       socket.emit("sendMessage", payload);
 
+      // Add message to local state (sender's side)
+      const newMsg = {
+        sender: "me",
+        content: newMessage,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, newMsg]);
+      setNewMessage("");
 
-    }catch(e){
+    } catch (e) {
       console.log(e.message);
     }
-
-
-    
-
-    // Add message to local state
-    setMessages(prev => [...prev, {
-      sender: "me",
-      content: newMessage,
-      timestamp: new Date(),
-    }]);
-    setNewMessage("");
-
-    // Show alert for 1 second
-    const alert = document.createElement('div');
-    alert.textContent = 'Message sent';
-    alert.style.position = 'fixed';
-    alert.style.top = '20px';
-    alert.style.right = '20px';
-    alert.style.padding = '10px 20px';
-    alert.style.backgroundColor = '#4CAF50';
-    alert.style.color = 'white';
-    alert.style.borderRadius = '5px';
-    alert.style.zIndex = '1000';
-    document.body.appendChild(alert);
-    setTimeout(() => {
-      document.body.removeChild(alert);
-    }, 1000);
   };
 
   const handleLogout = () => {
@@ -147,9 +160,11 @@ const ChatRoom = () => {
   };
 
   const handleFriendSelect = async (friend: Friend) => {
+    // Clear existing messages when selecting a new friend
+    setMessages([]);
     setSelectedFriend(friend);
 
-    try{
+    try {
       const response = await fetch("http://localhost:4000/api/user/data", {
         method: "GET",
         credentials: "include",
@@ -157,7 +172,7 @@ const ChatRoom = () => {
 
       const data = await response.json();
 
-      if (!data.success){
+      if (!data.success) {
         throw new Error(data.message);
       }
 
@@ -170,8 +185,7 @@ const ChatRoom = () => {
       
       socket.emit('joinRoom', payload);
 
-
-    }catch(e){
+    } catch (e) {
       alert(e.message);
     }
 
