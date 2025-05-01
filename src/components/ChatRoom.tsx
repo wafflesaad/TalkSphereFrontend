@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,12 @@ import { useToast } from "@/components/ui/use-toast";
 import TopBar from "./TopBar";
 import socket from "@/utils/io";
 import { error } from "console";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 socket.connect()
 
@@ -35,6 +41,10 @@ const ChatRoom = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
 
   // Load chat history from localStorage when component mounts or selectedFriend changes
   useEffect(() => {
@@ -212,24 +222,86 @@ const ChatRoom = () => {
     }, 1000);
   };
 
-  const handleVideoCall = () => {
+  const handleVideoCall = async () => {
     if (!selectedFriend) return;
-    // Show alert for 1 second
-    const alert = document.createElement('div');
-    alert.textContent = 'Video calling...';
-    alert.style.position = 'fixed';
-    alert.style.top = '20px';
-    alert.style.right = '20px';
-    alert.style.padding = '10px 20px';
-    alert.style.backgroundColor = '#2196F3';
-    alert.style.color = 'white';
-    alert.style.borderRadius = '5px';
-    alert.style.zIndex = '1000';
-    document.body.appendChild(alert);
-    setTimeout(() => {
-      document.body.removeChild(alert);
-    }, 1000);
+
+    try {
+      // First check if we already have a stream and clean it up
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        setLocalStream(null);
+      }
+
+      // Get the video stream
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: true,
+      });
+      
+      console.log("Got media stream:", stream);
+      setLocalStream(stream);
+
+      // Wait for the dialog to open and video element to be available
+      setIsVideoCallOpen(true);
+      
+      // Small delay to ensure the video element is mounted
+      setTimeout(() => {
+        if (localVideoRef.current) {
+          console.log("Setting video source");
+          localVideoRef.current.srcObject = stream;
+          
+          // Force play the video
+          localVideoRef.current.play()
+            .then(() => console.log("Video started playing"))
+            .catch(error => console.error("Error playing video:", error));
+        } else {
+          console.error("Video element not found");
+        }
+      }, 100);
+
+      // Emit video call event to socket
+      socket.emit('videoCall', {
+        to: selectedFriend.email,
+        from: localStorage.getItem('email')
+      });
+
+    } catch (error) {
+      console.error("Error accessing media devices:", error);
+      toast({
+        title: "Error",
+        description: "Failed to access camera and microphone. Please ensure your camera and microphone are properly connected and permissions are granted.",
+        variant: "destructive",
+      });
+    }
   };
+
+  const handleEndVideoCall = () => {
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+      setLocalStream(null);
+    }
+    setIsVideoCallOpen(false);
+    
+    // Emit end call event to socket
+    if (selectedFriend) {
+      socket.emit('endVideoCall', {
+        to: selectedFriend.email,
+        from: localStorage.getItem('email')
+      });
+    }
+  };
+
+  // Clean up media streams when component unmounts
+  useEffect(() => {
+    return () => {
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [localStream]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-200">
@@ -356,6 +428,53 @@ const ChatRoom = () => {
           </div>
         </div>
       </div>
+
+      {/* Video Call Dialog */}
+      <Dialog open={isVideoCallOpen} onOpenChange={setIsVideoCallOpen}>
+        <DialogContent className="w-[90vw] h-[90vh] max-w-[1600px] max-h-[900px]">
+          <DialogHeader>
+            <DialogTitle>Video Call with {selectedFriend?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 p-4 h-[calc(90vh-100px)]">
+            <div className="relative h-full">
+              <video
+                ref={localVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover rounded-lg bg-gray-900"
+                style={{ transform: 'scaleX(-1)' }}
+                onCanPlay={() => console.log("Local video can play")}
+                onError={(e) => console.error("Local video error:", e)}
+              />
+              <div className="absolute bottom-2 left-2 bg-black/50 text-white px-2 py-1 rounded">
+                You
+              </div>
+            </div>
+            <div className="relative h-full">
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                className="w-full h-full object-cover rounded-lg bg-gray-900"
+                onCanPlay={() => console.log("Remote video can play")}
+                onError={(e) => console.error("Remote video error:", e)}
+              />
+              <div className="absolute bottom-2 left-2 bg-black/50 text-white px-2 py-1 rounded">
+                {selectedFriend?.name}
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-center space-x-4 mt-4">
+            <Button
+              variant="destructive"
+              onClick={handleEndVideoCall}
+            >
+              End Call
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
