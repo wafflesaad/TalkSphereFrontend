@@ -10,6 +10,7 @@ import UserProfile from "./components/UserProfile";
 import VerifyEmailForm from "./components/VerifyEmailForm";
 import ChatRoom from "./components/ChatRoom";
 import socket from "./utils/io";
+import CallScreen from "./components/CallScreen";
 
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/profile" element={<UserProfile />} />
           <Route path="/verify-email" element={<VerifyEmailForm />} />
           <Route path="/chatroom" element={<ChatRoom />} />
+          <Route path="/call" element={<CallScreen />} />
           <Route path="/" element={<Index />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

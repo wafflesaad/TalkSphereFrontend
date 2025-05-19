@@ -38,6 +38,8 @@ const ChatRoom = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [friendRequests, setFriendRequests] = useState<Friend[]>([]);
   const [activeSection, setActiveSection] = useState<'none' | 'requests' | 'friends'>('none');
+  const [videoCallRequest, setVideoCallRequest] = useState<boolean>(false);
+  const [isCaller, setIsCaller] = useState<boolean>(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -45,6 +47,7 @@ const ChatRoom = () => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load chat history from localStorage when component mounts or selectedFriend changes
   useEffect(() => {
@@ -84,11 +87,48 @@ const ChatRoom = () => {
 
     // Set up socket event listener for received messages
     socket.on("receiveMessage", (message) => {
-      setMessages(prev => [...prev, {
-        sender: "friend",
-        content: message,
-        timestamp: new Date()
-      }]);
+      if (message === "_video") {
+        setVideoCallRequest(true);
+        setIsCaller(false);
+        // Show notification to receiver
+        const alert = document.createElement('div');
+        alert.textContent = 'Incoming video call...';
+        alert.style.position = 'fixed';
+        alert.style.top = '20px';
+        alert.style.right = '20px';
+        alert.style.padding = '10px 20px';
+        alert.style.backgroundColor = '#2196F3';
+        alert.style.color = 'white';
+        alert.style.borderRadius = '5px';
+        alert.style.zIndex = '1000';
+        document.body.appendChild(alert);
+        setTimeout(() => {
+          document.body.removeChild(alert);
+        }, 1000);
+      } else if (message === "_video_accepted") {
+        setVideoCallRequest(false);
+        // Show notification to both users
+        const alert = document.createElement('div');
+        alert.textContent = 'Video calling...';
+        alert.style.position = 'fixed';
+        alert.style.top = '20px';
+        alert.style.right = '20px';
+        alert.style.padding = '10px 20px';
+        alert.style.backgroundColor = '#2196F3';
+        alert.style.color = 'white';
+        alert.style.borderRadius = '5px';
+        alert.style.zIndex = '1000';
+        document.body.appendChild(alert);
+        setTimeout(() => {
+          document.body.removeChild(alert);
+        }, 1000);
+      } else {
+        setMessages(prev => [...prev, {
+          sender: "friend",
+          content: message,
+          timestamp: new Date()
+        }]);
+      }
     });
 
     // Clean up socket listener when component unmounts
@@ -226,55 +266,78 @@ const ChatRoom = () => {
     if (!selectedFriend) return;
 
     try {
-      // First check if we already have a stream and clean it up
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-        setLocalStream(null);
+      const response = await fetch("http://localhost:4000/api/user/data", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.message);
       }
 
-      // Get the video stream
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: true,
-      });
-      
-      console.log("Got media stream:", stream);
-      setLocalStream(stream);
+      let email = data.userData.email;
 
-      // Wait for the dialog to open and video element to be available
-      setIsVideoCallOpen(true);
+      let payload = {
+        sender: email,
+        receiver: selectedFriend.email,
+        message: "_video"
+      }
       
-      // Small delay to ensure the video element is mounted
+      socket.emit("sendMessage", payload);
+      setIsCaller(true);
+      setVideoCallRequest(false);
+
+      // Show notification to caller
+      const alert = document.createElement('div');
+      alert.textContent = 'Video call request sent...';
+      alert.style.position = 'fixed';
+      alert.style.top = '20px';
+      alert.style.right = '20px';
+      alert.style.padding = '10px 20px';
+      alert.style.backgroundColor = '#2196F3';
+      alert.style.color = 'white';
+      alert.style.borderRadius = '5px';
+      alert.style.zIndex = '1000';
+      document.body.appendChild(alert);
       setTimeout(() => {
-        if (localVideoRef.current) {
-          console.log("Setting video source");
-          localVideoRef.current.srcObject = stream;
-          
-          // Force play the video
-          localVideoRef.current.play()
-            .then(() => console.log("Video started playing"))
-            .catch(error => console.error("Error playing video:", error));
-        } else {
-          console.error("Video element not found");
-        }
-      }, 100);
+        document.body.removeChild(alert);
+      }, 1000);
 
-      // Emit video call event to socket
-      socket.emit('videoCall', {
-        to: selectedFriend.email,
-        from: localStorage.getItem('email')
+    } catch (e) {
+      console.log(e.message);
+    }
+  };
+
+  const handleAcceptVideoCall = async () => {
+    setVideoCallRequest(false);
+
+    try {
+      const response = await fetch("http://localhost:4000/api/user/data", {
+        method: "GET",
+        credentials: "include",
       });
 
-    } catch (error) {
-      console.error("Error accessing media devices:", error);
-      toast({
-        title: "Error",
-        description: "Failed to access camera and microphone. Please ensure your camera and microphone are properly connected and permissions are granted.",
-        variant: "destructive",
-      });
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.message);
+      }
+
+      let email = data.userData.email;
+
+      // Send acceptance message back to caller
+      let payload = {
+        sender: email,
+        receiver: selectedFriend.email,
+        message: "_video_accepted"
+      }
+      
+      socket.emit("sendMessage", payload);
+
+    } catch (e) {
+      console.log(e.message);
     }
   };
 
@@ -302,6 +365,15 @@ const ChatRoom = () => {
       }
     };
   }, [localStream]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-200">
@@ -351,8 +423,20 @@ const ChatRoom = () => {
                 </div>
               </div>
 
+              {/* Video Call Request Button - Only show to receiver */}
+              {videoCallRequest && !isCaller && (
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800">
+                  <Button
+                    onClick={handleAcceptVideoCall}
+                    className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+                  >
+                    Accept Video Call
+                  </Button>
+                </div>
+              )}
+
               {/* Messages */}
-              <div className="flex-1 p-4 overflow-y-auto bg-white dark:bg-gray-950 transition-colors duration-200">
+              <div className="flex-1 p-4 overflow-y-auto bg-white dark:bg-gray-950 transition-colors duration-200 flex flex-col">
                 {messages.map((message, index) => (
                   <div
                     key={index}
@@ -374,6 +458,7 @@ const ChatRoom = () => {
                     </p>
                   </div>
                 ))}
+                <div ref={messagesEndRef} />
               </div>
 
               {/* Message Input */}
