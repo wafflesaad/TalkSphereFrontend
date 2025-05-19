@@ -26,7 +26,7 @@ const App = () => (
           <Route path="/profile" element={<UserProfile />} />
           <Route path="/verify-email" element={<VerifyEmailForm />} />
           <Route path="/chatroom" element={<ChatRoom />} />
-          <Route path="/call" element={<CallScreen />} />
+          <Route path="/callscreen" element={<CallScreen />} />
           <Route path="/" element={<Index />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

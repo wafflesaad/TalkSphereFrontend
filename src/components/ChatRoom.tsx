@@ -72,6 +72,7 @@ const ChatRoom = () => {
   const [isSelfCameraOpen, setIsSelfCameraOpen] = useState(false);
   const selfCameraRef = useRef<HTMLVideoElement>(null);
   const [selfStream, setSelfStream] = useState<MediaStream | null>(null);
+  const [roomId, setRoomId] = useState<string | null>(null);
 
   const initializeVideoCall = async () => {
     if (!myPeer) return;
@@ -244,41 +245,21 @@ const ChatRoom = () => {
       }
     }
 
-    // Modify socket message handler to use both sockets
-    socket.on("receiveMessage", (message, peerId) => {
+    // Modify socket message handler for video calls
+    socket.on("receiveMessage", (message, peerId, roomId) => {
       if (message === "_video") {
         setVideoCallRequest(true);
         setIsCaller(false);
         setRemotePeerId(peerId);
+        setRoomId(roomId);
         toast({
           title: "Incoming Video Call",
           description: "You have an incoming video call request",
         });
       } else if (message === "_video_accepted") {
         setVideoCallRequest(false);
-
-        // Get current user's email
-        fetch("http://localhost:4000/api/user/data", {
-          method: "GET",
-          credentials: "include",
-        })
-          .then(response => response.json())
-          .then(data => {
-            if (data.success) {
-              let email = data.userData.email;
-              // Create room ID using the same format as server.js
-              const roomId = [email, selectedFriend?.email].sort().join('-');
-
-              console.log("Joining video room on accept:", roomId, "with peer ID:", myPeer?.id);
-              // Emit join-room event with peer ID to video socket
-              videoSocket.emit("join-room", roomId, myPeer?.id);
-            }
-          })
-          .catch(error => {
-            console.error("Error getting user data:", error);
-          });
-
-        initializeVideoCall();
+        // Open CallScreen in new tab
+        window.open(`/callscreen?room=${roomId}&peer=${peerId}`, '_blank');
       } else {
         setMessages(prev => [...prev, {
           sender: "friend",
@@ -447,26 +428,20 @@ const ChatRoom = () => {
 
       // Create room ID using the same format as server.js
       const roomId = [email, selectedFriend.email].sort().join('-');
+      
+      // Open CallScreen in new tab with room ID and peer ID
+      window.open(`/callscreen?room=${roomId}&peer=${myPeer.id}`, '_blank');
 
-      console.log("Joining video room:", roomId, "with peer ID:", myPeer.id);
-      // Emit join-room event with peer ID to video socket
-      videoSocket.emit("join-room", roomId, myPeer.id);
-
+      // Send video call request to friend
       let payload = {
         sender: email,
         receiver: selectedFriend.email,
         message: "_video",
-        peerId: myPeer.id
-      }
-
+        peerId: myPeer.id,
+        roomId: roomId
+      };
+      
       socket.emit("sendMessage", payload);
-      setIsCaller(true);
-      setVideoCallRequest(false);
-
-      toast({
-        title: "Video Call",
-        description: "Video call request sent...",
-      });
 
     } catch (e) {
       console.log(e.message);
@@ -475,37 +450,6 @@ const ChatRoom = () => {
         description: "Failed to initiate video call: " + e.message,
         variant: "destructive"
       });
-    }
-  };
-
-  const handleAcceptVideoCall = async () => {
-    setVideoCallRequest(false);
-
-    try {
-      const response = await fetch("http://localhost:4000/api/user/data", {
-        method: "GET",
-        credentials: "include",
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.message);
-      }
-
-      let email = data.userData.email;
-
-      // Send acceptance message back to caller
-      let payload = {
-        sender: email,
-        receiver: selectedFriend.email,
-        message: "_video_accepted"
-      }
-
-      socket.emit("sendMessage", payload);
-
-    } catch (e) {
-      console.log(e.message);
     }
   };
 
@@ -532,8 +476,6 @@ const ChatRoom = () => {
       }
     };
   }, [myStream]);
-
-
 
   // Initialize video socket
   useEffect(() => {
@@ -568,8 +510,6 @@ const ChatRoom = () => {
       videoSocket.off("user-connected");
     };
   }, [isCaller, remotePeerId]);
-
-
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -660,6 +600,50 @@ const ChatRoom = () => {
     };
   }, [selfStream]);
 
+  const handleAcceptVideoCall = async () => {
+    setVideoCallRequest(false);
+
+    try {
+      const response = await fetch("http://localhost:4000/api/user/data", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.message);
+      }
+
+      let email = data.userData.email;
+
+      // Create room ID using the same format as server.js
+      const roomId = [email, selectedFriend?.email].sort().join('-');
+
+      // Send acceptance message back to caller
+      let payload = {
+        sender: email,
+        receiver: selectedFriend?.email,
+        message: "_video_accepted",
+        roomId: roomId,
+        peerId: myPeer?.id
+      };
+
+      socket.emit("sendMessage", payload);
+
+      // Open CallScreen in new tab
+      window.open(`/callscreen?room=${roomId}&peer=${remotePeerId}`, '_blank');
+
+    } catch (e) {
+      console.log(e.message);
+      toast({
+        title: "Error",
+        description: "Failed to accept video call: " + e.message,
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-200">
       <TopBar 
@@ -725,13 +709,12 @@ const ChatRoom = () => {
                 {messages.map((message, index) => (
                   <div
                     key={index}
-                    className={`mb-4 ${message.sender === "me" ? "text-right" : "text-left"
-                    }`}
+                    className={`mb-4 ${message.sender === "me" ? "text-right" : "text-left"}`}
                   >
                     <div
                       className={`inline-block p-3 rounded-lg ${message.sender === "me"
-                          ? "bg-blue-500 text-white"
-                          : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       } transition-colors duration-200`}
                     >
                       {message.content}
@@ -747,14 +730,6 @@ const ChatRoom = () => {
               {/* Message Input */}
               <div className="border-t p-4 bg-white dark:bg-gray-900 dark:border-gray-800 transition-colors duration-200">
                 <div className="flex space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleSelfCamera}
-                    className="hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors duration-200"
-                  >
-                    <Camera className="h-5 w-5" />
-                  </Button>
                   <Input
                     placeholder="Type a message..."
                     value={newMessage}
@@ -785,8 +760,7 @@ const ChatRoom = () => {
             {friends.map((friend) => (
               <div
                 key={friend.email}
-                className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 ${selectedFriend?.email === friend.email ? "bg-gray-100 dark:bg-gray-800" : ""
-                }`}
+                className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 ${selectedFriend?.email === friend.email ? "bg-gray-100 dark:bg-gray-800" : ""}`}
                 onClick={() => handleFriendSelect(friend)}
               >
                 <Avatar>
