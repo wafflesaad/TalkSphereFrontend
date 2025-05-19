@@ -4,19 +4,37 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
-import { Send, LogOut, Users, Search, X, UserPlus, UserCheck, UserMinus, MessageSquare, Phone, Video } from "lucide-react";
+import { Send, LogOut, Users, Search, X, UserPlus, UserCheck, UserMinus, MessageSquare, Phone, Video, Camera } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import TopBar from "./TopBar";
 import socket from "@/utils/io";
 import { error } from "console";
+import Peer from "peerjs";
+import { io } from "socket.io-client";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 
-socket.connect()
+// Initialize video socket connection
+const videoSocket = io("http://localhost:4001", {
+  withCredentials: true,
+  transports: ["websocket"],
+  reconnection: true,
+  reconnectionAttempts: 5,
+});
+
+// Add connection logging
+videoSocket.on("connect", () => {
+  console.log("Connected to video server:", videoSocket.id);
+});
+
+videoSocket.on("connect_error", (error) => {
+  console.error("Video connection error:", error);
+});
 
 interface Friend {
   email: string;
@@ -48,7 +66,148 @@ const ChatRoom = () => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [myPeer, setMyPeer] = useState<Peer | null>(null);
+  const [myStream, setMyStream] = useState<MediaStream | null>(null);
+  const [remotePeerId, setRemotePeerId] = useState<string | null>(null);
+  const [isSelfCameraOpen, setIsSelfCameraOpen] = useState(false);
+  const selfCameraRef = useRef<HTMLVideoElement>(null);
+  const [selfStream, setSelfStream] = useState<MediaStream | null>(null);
 
+  const initializeVideoCall = async () => {
+    if (!myPeer) return;
+
+    try {
+      console.log("Initializing video call");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+      });
+      
+      console.log("Got local media stream");
+      setMyStream(stream);
+      setIsVideoCallOpen(true);
+
+      // Set up local video
+      if (localVideoRef.current) {
+        console.log("Setting local video stream");
+        localVideoRef.current.srcObject = stream;
+        localVideoRef.current.muted = true; // Mute local video
+        await localVideoRef.current.play().catch(e => console.error("Local video play error:", e));
+        console.log("Local video playing");
+      }
+
+      // If we're the caller, connect to the other user using their peer ID
+      if (isCaller && remotePeerId) {
+        console.log("Making call to peer:", remotePeerId);
+        const call = myPeer.call(remotePeerId, stream);
+        
+        call.on('stream', userVideoStream => {
+          console.log("Received remote stream from outgoing call");
+          if (remoteVideoRef.current) {
+            console.log("Setting remote video stream");
+            remoteVideoRef.current.srcObject = userVideoStream;
+            remoteVideoRef.current.muted = false; // Unmute remote video
+            remoteVideoRef.current.play().then(() => {
+              console.log("Remote video playing");
+            }).catch(e => console.error("Remote video play error:", e));
+          }
+        });
+
+        call.on('error', error => {
+          console.error('Call error:', error);
+          toast({
+            title: "Error",
+            description: "Call failed: " + error.message,
+            variant: "destructive"
+          });
+        });
+
+        call.on('close', () => {
+          console.log("Call closed");
+          handleEndVideoCall();
+        });
+      }
+
+      // Handle incoming calls
+      myPeer.on('call', call => {
+        console.log("Received call from peer:", call.peer);
+        call.answer(stream);
+        
+        call.on('stream', userVideoStream => {
+          console.log("Received remote stream from incoming call");
+          if (remoteVideoRef.current) {
+            console.log("Setting remote video stream from incoming call");
+            remoteVideoRef.current.srcObject = userVideoStream;
+            remoteVideoRef.current.muted = false; // Unmute remote video
+            remoteVideoRef.current.play().then(() => {
+              console.log("Remote video playing from incoming call");
+            }).catch(e => console.error("Remote video play error:", e));
+          }
+        });
+
+        call.on('error', error => {
+          console.error('Call error:', error);
+          toast({
+            title: "Error",
+            description: "Call failed: " + error.message,
+            variant: "destructive"
+          });
+        });
+
+        call.on('close', () => {
+          console.log("Call closed");
+          handleEndVideoCall();
+        });
+      });
+
+    } catch (error) {
+      console.error("Error accessing media devices:", error);
+      toast({
+        title: "Error",
+        description: "Failed to access camera/microphone: " + error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+    // Initialize PeerJS
+    useEffect(() => {
+      const peer = new Peer(undefined, {
+        host: 'localhost',
+        port: 4002,
+        debug: 3,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:global.stun.twilio.com:3478' }
+          ]
+        }
+      });
+  
+      const handleOpen = (id) => {
+        console.log("My peer ID is:", id);
+        setMyPeer(peer);
+      };
+  
+      const handleError = (error) => {
+        console.error("Peer error:", error);
+        toast({
+          title: "Error",
+          description: "Peer connection failed: " + error.message,
+          variant: "destructive"
+        });
+      };
+  
+      peer.on("open", handleOpen);
+      peer.on("error", handleError);
+  
+      return () => {
+        peer.off("open", handleOpen);
+        peer.off("error", handleError);
+        if (peer) peer.destroy();
+      };
+    }, []);
+    
   // Load chat history from localStorage when component mounts or selectedFriend changes
   useEffect(() => {
     if (selectedFriend) {
@@ -85,43 +244,41 @@ const ChatRoom = () => {
       }
     }
 
-    // Set up socket event listener for received messages
-    socket.on("receiveMessage", (message) => {
+    // Modify socket message handler to use both sockets
+    socket.on("receiveMessage", (message, peerId) => {
       if (message === "_video") {
         setVideoCallRequest(true);
         setIsCaller(false);
-        // Show notification to receiver
-        const alert = document.createElement('div');
-        alert.textContent = 'Incoming video call...';
-        alert.style.position = 'fixed';
-        alert.style.top = '20px';
-        alert.style.right = '20px';
-        alert.style.padding = '10px 20px';
-        alert.style.backgroundColor = '#2196F3';
-        alert.style.color = 'white';
-        alert.style.borderRadius = '5px';
-        alert.style.zIndex = '1000';
-        document.body.appendChild(alert);
-        setTimeout(() => {
-          document.body.removeChild(alert);
-        }, 1000);
+        setRemotePeerId(peerId);
+        toast({
+          title: "Incoming Video Call",
+          description: "You have an incoming video call request",
+        });
       } else if (message === "_video_accepted") {
         setVideoCallRequest(false);
-        // Show notification to both users
-        const alert = document.createElement('div');
-        alert.textContent = 'Video calling...';
-        alert.style.position = 'fixed';
-        alert.style.top = '20px';
-        alert.style.right = '20px';
-        alert.style.padding = '10px 20px';
-        alert.style.backgroundColor = '#2196F3';
-        alert.style.color = 'white';
-        alert.style.borderRadius = '5px';
-        alert.style.zIndex = '1000';
-        document.body.appendChild(alert);
-        setTimeout(() => {
-          document.body.removeChild(alert);
-        }, 1000);
+
+        // Get current user's email
+        fetch("http://localhost:4000/api/user/data", {
+          method: "GET",
+          credentials: "include",
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              let email = data.userData.email;
+              // Create room ID using the same format as server.js
+              const roomId = [email, selectedFriend?.email].sort().join('-');
+
+              console.log("Joining video room on accept:", roomId, "with peer ID:", myPeer?.id);
+              // Emit join-room event with peer ID to video socket
+              videoSocket.emit("join-room", roomId, myPeer?.id);
+            }
+          })
+          .catch(error => {
+            console.error("Error getting user data:", error);
+          });
+
+        initializeVideoCall();
       } else {
         setMessages(prev => [...prev, {
           sender: "friend",
@@ -131,11 +288,20 @@ const ChatRoom = () => {
       }
     });
 
-    // Clean up socket listener when component unmounts
+    // Video socket for user connections
+    videoSocket.on("user-connected", (userId) => {
+      console.log("User connected to video room:", userId);
+      if (isCaller && userId === remotePeerId) {
+        console.log("Remote user connected, initializing call");
+        initializeVideoCall();
+      }
+    });
+
     return () => {
       socket.off("receiveMessage");
+      videoSocket.off("user-connected");
     };
-  }, [location.search, friends]);
+  }, [myPeer, selectedFriend, isCaller, remotePeerId]);
 
   useEffect(() => {
     // Fetch friends list
@@ -263,7 +429,7 @@ const ChatRoom = () => {
   };
 
   const handleVideoCall = async () => {
-    if (!selectedFriend) return;
+    if (!selectedFriend || !myPeer) return;
 
     try {
       const response = await fetch("http://localhost:4000/api/user/data", {
@@ -279,34 +445,36 @@ const ChatRoom = () => {
 
       let email = data.userData.email;
 
+      // Create room ID using the same format as server.js
+      const roomId = [email, selectedFriend.email].sort().join('-');
+
+      console.log("Joining video room:", roomId, "with peer ID:", myPeer.id);
+      // Emit join-room event with peer ID to video socket
+      videoSocket.emit("join-room", roomId, myPeer.id);
+
       let payload = {
         sender: email,
         receiver: selectedFriend.email,
-        message: "_video"
+        message: "_video",
+        peerId: myPeer.id
       }
-      
+
       socket.emit("sendMessage", payload);
       setIsCaller(true);
       setVideoCallRequest(false);
 
-      // Show notification to caller
-      const alert = document.createElement('div');
-      alert.textContent = 'Video call request sent...';
-      alert.style.position = 'fixed';
-      alert.style.top = '20px';
-      alert.style.right = '20px';
-      alert.style.padding = '10px 20px';
-      alert.style.backgroundColor = '#2196F3';
-      alert.style.color = 'white';
-      alert.style.borderRadius = '5px';
-      alert.style.zIndex = '1000';
-      document.body.appendChild(alert);
-      setTimeout(() => {
-        document.body.removeChild(alert);
-      }, 1000);
+      toast({
+        title: "Video Call",
+        description: "Video call request sent...",
+      });
 
     } catch (e) {
       console.log(e.message);
+      toast({
+        title: "Error",
+        description: "Failed to initiate video call: " + e.message,
+        variant: "destructive"
+      });
     }
   };
 
@@ -333,7 +501,7 @@ const ChatRoom = () => {
         receiver: selectedFriend.email,
         message: "_video_accepted"
       }
-      
+
       socket.emit("sendMessage", payload);
 
     } catch (e) {
@@ -342,13 +510,12 @@ const ChatRoom = () => {
   };
 
   const handleEndVideoCall = () => {
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
-      setLocalStream(null);
+    if (myStream) {
+      myStream.getTracks().forEach(track => track.stop());
+      setMyStream(null);
     }
     setIsVideoCallOpen(false);
-    
-    // Emit end call event to socket
+
     if (selectedFriend) {
       socket.emit('endVideoCall', {
         to: selectedFriend.email,
@@ -360,11 +527,49 @@ const ChatRoom = () => {
   // Clean up media streams when component unmounts
   useEffect(() => {
     return () => {
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
+      if (myStream) {
+        myStream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [localStream]);
+  }, [myStream]);
+
+
+
+  // Initialize video socket
+  useEffect(() => {
+    console.log("Setting up video socket listeners");
+
+    videoSocket.on("connect", () => {
+      console.log("Connected to video server:", videoSocket.id);
+    });
+
+    videoSocket.on("connect_error", (error) => {
+      console.error("Video connection error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to connect to video server",
+        variant: "destructive"
+      });
+    });
+
+    // Listen for user connections in the video room
+    videoSocket.on("user-connected", (userId) => {
+      console.log("User connected to video room:", userId);
+      if (isCaller && userId === remotePeerId) {
+        console.log("Remote user connected, initializing call");
+        initializeVideoCall();
+      }
+    });
+
+    return () => {
+      console.log("Cleaning up video socket listeners");
+      videoSocket.off("connect");
+      videoSocket.off("connect_error");
+      videoSocket.off("user-connected");
+    };
+  }, [isCaller, remotePeerId]);
+
+
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -374,6 +579,86 @@ const ChatRoom = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Function to handle self camera
+  const handleSelfCamera = async () => {
+    console.log("Attempting to access camera...");
+    try {
+      // First check if getUserMedia is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("getUserMedia is not supported in this browser");
+      }
+
+      console.log("Requesting camera access...");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: "user"
+        },
+        audio: false
+      });
+      
+      console.log("Camera access granted, stream received:", stream);
+      setSelfStream(stream);
+      setIsSelfCameraOpen(true);
+    } catch (error) {
+      console.error("Detailed camera error:", error);
+      toast({
+        title: "Camera Error",
+        description: `Failed to access camera: ${error.message}. Please make sure your camera is connected and you've granted permission to use it.`,
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Effect to handle video stream when dialog opens
+  useEffect(() => {
+    if (isSelfCameraOpen && selfStream && selfCameraRef.current) {
+      console.log("Setting up video stream");
+      selfCameraRef.current.srcObject = selfStream;
+      
+      // Add event listeners for debugging
+      selfCameraRef.current.onloadedmetadata = () => {
+        console.log("Video metadata loaded");
+      };
+      
+      selfCameraRef.current.oncanplay = () => {
+        console.log("Video can play");
+      };
+
+      selfCameraRef.current.onerror = (e) => {
+        console.error("Video element error:", e);
+      };
+
+      // Try to play the video
+      selfCameraRef.current.play()
+        .then(() => console.log("Video playback started successfully"))
+        .catch(error => console.error("Error playing video:", error));
+    }
+  }, [isSelfCameraOpen, selfStream]);
+
+  // Function to close self camera
+  const handleCloseSelfCamera = () => {
+    if (selfStream) {
+      console.log("Stopping camera stream");
+      selfStream.getTracks().forEach(track => {
+        track.stop();
+        console.log("Stopped track:", track.kind);
+      });
+      setSelfStream(null);
+    }
+    setIsSelfCameraOpen(false);
+  };
+
+  // Clean up self camera stream when component unmounts
+  useEffect(() => {
+    return () => {
+      if (selfStream) {
+        selfStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [selfStream]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-200">
@@ -440,13 +725,11 @@ const ChatRoom = () => {
                 {messages.map((message, index) => (
                   <div
                     key={index}
-                    className={`mb-4 ${
-                      message.sender === "me" ? "text-right" : "text-left"
+                    className={`mb-4 ${message.sender === "me" ? "text-right" : "text-left"
                     }`}
                   >
                     <div
-                      className={`inline-block p-3 rounded-lg ${
-                        message.sender === "me"
+                      className={`inline-block p-3 rounded-lg ${message.sender === "me"
                           ? "bg-blue-500 text-white"
                           : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       } transition-colors duration-200`}
@@ -464,6 +747,14 @@ const ChatRoom = () => {
               {/* Message Input */}
               <div className="border-t p-4 bg-white dark:bg-gray-900 dark:border-gray-800 transition-colors duration-200">
                 <div className="flex space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleSelfCamera}
+                    className="hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors duration-200"
+                  >
+                    <Camera className="h-5 w-5" />
+                  </Button>
                   <Input
                     placeholder="Type a message..."
                     value={newMessage}
@@ -494,8 +785,7 @@ const ChatRoom = () => {
             {friends.map((friend) => (
               <div
                 key={friend.email}
-                className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 ${
-                  selectedFriend?.email === friend.email ? "bg-gray-100 dark:bg-gray-800" : ""
+                className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 ${selectedFriend?.email === friend.email ? "bg-gray-100 dark:bg-gray-800" : ""
                 }`}
                 onClick={() => handleFriendSelect(friend)}
               >
@@ -529,8 +819,8 @@ const ChatRoom = () => {
                 muted
                 className="w-full h-full object-cover rounded-lg bg-gray-900"
                 style={{ transform: 'scaleX(-1)' }}
+                onLoadedMetadata={() => console.log("Local video metadata loaded")}
                 onCanPlay={() => console.log("Local video can play")}
-                onError={(e) => console.error("Local video error:", e)}
               />
               <div className="absolute bottom-2 left-2 bg-black/50 text-white px-2 py-1 rounded">
                 You
@@ -542,8 +832,8 @@ const ChatRoom = () => {
                 autoPlay
                 playsInline
                 className="w-full h-full object-cover rounded-lg bg-gray-900"
+                onLoadedMetadata={() => console.log("Remote video metadata loaded")}
                 onCanPlay={() => console.log("Remote video can play")}
-                onError={(e) => console.error("Remote video error:", e)}
               />
               <div className="absolute bottom-2 left-2 bg-black/50 text-white px-2 py-1 rounded">
                 {selectedFriend?.name}
@@ -557,6 +847,37 @@ const ChatRoom = () => {
             >
               End Call
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Self Camera Dialog */}
+      <Dialog open={isSelfCameraOpen} onOpenChange={setIsSelfCameraOpen}>
+        <DialogContent className="w-[90vw] h-[90vh] max-w-[1600px] max-h-[900px]">
+          <DialogHeader>
+            <DialogTitle>Your Camera</DialogTitle>
+            <DialogDescription>
+              Your camera feed will appear below. Click "Turn Off Camera" to close.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="relative h-[calc(90vh-100px)]">
+            <video
+              ref={selfCameraRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover rounded-lg bg-gray-900"
+              style={{ transform: 'scaleX(-1)' }}
+            />
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+              <Button
+                variant="destructive"
+                onClick={handleCloseSelfCamera}
+                className="px-6"
+              >
+                Turn Off Camera
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
