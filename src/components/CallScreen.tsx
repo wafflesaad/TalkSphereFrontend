@@ -28,12 +28,12 @@ const CallScreen = () => {
     });
 
     newSocket.on("connect", () => {
-      console.log("Connected to server:", newSocket.id);
+      console.log("Connected to video server:", newSocket.id);
       setSocket(newSocket);
     });
 
     newSocket.on("connect_error", (error) => {
-      console.error("Connection error:", error);
+      console.error("Video connection error:", error);
     });
 
     return () => {
@@ -89,6 +89,7 @@ const CallScreen = () => {
         }
 
         // Join the room
+        console.log("Attempting to join room:", roomId, "with peer ID:", myPeer.id);
         socket.emit("join-room", roomId, myPeer.id);
 
         // Handle incoming calls
@@ -154,7 +155,7 @@ const CallScreen = () => {
     if (remoteStream) {
       remoteStream.getTracks().forEach(track => track.stop());
     }
-    navigate('/chatroom');
+    window.close();
   };
 
   return (
