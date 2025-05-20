@@ -93,7 +93,7 @@ const ChatRoom = () => {
         video: true,
         audio: true
       });
-      
+
       console.log("Got local media stream");
       setMyStream(stream);
       setIsVideoCallOpen(true);
@@ -111,7 +111,7 @@ const ChatRoom = () => {
       if (isCaller && remotePeerId) {
         console.log("Making call to peer:", remotePeerId);
         const call = myPeer.call(remotePeerId, stream);
-        
+
         call.on('stream', userVideoStream => {
           console.log("Received remote stream from outgoing call");
           if (remoteVideoRef.current) {
@@ -143,7 +143,7 @@ const ChatRoom = () => {
       myPeer.on('call', call => {
         console.log("Received call from peer:", call.peer);
         call.answer(stream);
-        
+
         call.on('stream', userVideoStream => {
           console.log("Received remote stream from incoming call");
           if (remoteVideoRef.current) {
@@ -245,7 +245,7 @@ const ChatRoom = () => {
     // Check if we have a friend email in the URL
     const params = new URLSearchParams(location.search);
     const friendEmail = params.get('friend');
-    
+
     if (friendEmail) {
       // Find the friend in the friends list
       const friend = friends.find(f => f.email === friendEmail);
@@ -303,7 +303,7 @@ const ChatRoom = () => {
         });
 
         const data = await response.json();
-        
+
         if (data.success) {
           const uniqueFriends = Array.from(new Set(data.friends))
             .map((email: string) => ({ email, name: email.split('@')[0] }));
@@ -339,7 +339,7 @@ const ChatRoom = () => {
         receiver: selectedFriend.email,
         message: newMessage,
       };
-      
+
       socket.emit("sendMessage", payload);
 
       // Add message to local state (sender's side)
@@ -388,7 +388,7 @@ const ChatRoom = () => {
         sender: email,
         receiver: friend.email
       }
-      
+
       socket.emit('joinRoom', payload);
 
     } catch (e) {
@@ -521,7 +521,7 @@ const ChatRoom = () => {
         },
         audio: false
       });
-      
+
       console.log("Camera access granted, stream received:", stream);
       setSelfStream(stream);
       setIsSelfCameraOpen(true);
@@ -540,12 +540,12 @@ const ChatRoom = () => {
     if (isSelfCameraOpen && selfStream && selfCameraRef.current) {
       console.log("Setting up video stream");
       selfCameraRef.current.srcObject = selfStream;
-      
+
       // Add event listeners for debugging
       selfCameraRef.current.onloadedmetadata = () => {
         console.log("Video metadata loaded");
       };
-      
+
       selfCameraRef.current.oncanplay = () => {
         console.log("Video can play");
       };
@@ -583,7 +583,7 @@ const ChatRoom = () => {
     };
   }, [selfStream]);
 
-  
+
   const handleVideoCall = async () => {
     if (!selectedFriend || !myPeer) return;
 
@@ -603,23 +603,23 @@ const ChatRoom = () => {
 
       // Create room ID using the same format as server.js
       const roomId = [email, selectedFriend.email].sort().join('-');
-      
+
       // Set in call state
       setIsInCall(true);
-      
+
       // Check if call window is already open
-      const callWindow = window.open('', 'videoCall');
-      if (callWindow && !callWindow.closed) {
-        if (roomId){
+      // const callWindow = window.open('', 'videoCall');
+      // if (callWindow && !callWindow.closed) {
+      //   if (roomId){
 
-          callWindow.location.href = `/callscreen?room=${roomId}&peer=${myPeer.id}`;
-        }
-      } else {
-        if(roomId){
+      //     callWindow.location.href = `/callscreen?room=${roomId}&peer=${myPeer.id}`;
+      //   }
+      // } else {
+      //   if(roomId){
 
-          window.open(`/callscreen?room=${roomId}&peer=${myPeer.id}`, 'videoCall');
-        }
-      }
+      //     window.open(`/callscreen?room=${roomId}&peer=${myPeer.id}`, 'videoCall');
+      //   }
+      // }
 
       // Send video call request to friend
       let payload = {
@@ -629,7 +629,7 @@ const ChatRoom = () => {
         peerId: myPeer.id,
         roomId: roomId
       };
-      
+
       socket.emit("sendMessage", payload);
 
     } catch (e) {
@@ -681,18 +681,17 @@ const ChatRoom = () => {
 
       socket.emit("sendMessage", payload);
 
-      // Check if call window is already open
-      const callWindow = window.open('', 'videoCall');
-      if (callWindow && !callWindow.closed) {
-        if(roomId){
+      if (roomId && remotePeerId) {
+        const callWindow = window.open('', 'videoCall');
+        if (callWindow && !callWindow.closed) {
           callWindow.location.href = `/callscreen?room=${roomId}&peer=${remotePeerId}`;
-        }
-      } else {
-        if (roomId){
-
+        } else {
           window.open(`/callscreen?room=${roomId}&peer=${remotePeerId}`, 'videoCall');
         }
+      } else {
+        console.warn("Call screen not opened: roomId or remotePeerId is undefined");
       }
+
 
     } catch (e) {
       console.log(e.message);
@@ -706,7 +705,7 @@ const ChatRoom = () => {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-200">
-      <TopBar 
+      <TopBar
         activeSection={activeSection}
         onSectionClick={handleSectionClick}
         friendRequestsCount={0}
@@ -775,7 +774,7 @@ const ChatRoom = () => {
                       className={`inline-block p-3 rounded-lg ${message.sender === "me"
                         ? "bg-blue-500 text-white"
                         : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                      } transition-colors duration-200`}
+                        } transition-colors duration-200`}
                     >
                       {message.content}
                     </div>
@@ -797,7 +796,7 @@ const ChatRoom = () => {
                     onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
                     className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-200 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
                   />
-                  <Button 
+                  <Button
                     onClick={handleSendMessage}
                     className="bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white transition-colors duration-200"
                   >
@@ -919,5 +918,5 @@ const ChatRoom = () => {
   );
 };
 
-export default ChatRoom; 
+export default ChatRoom;
 
