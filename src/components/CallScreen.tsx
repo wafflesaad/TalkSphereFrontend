@@ -84,7 +84,7 @@ const CallScreen = () => {
             height: { ideal: 720 },
             facingMode: "user"
           },
-          audio: audioDevices.length > 0
+          audio: audioDevices.length > 0? true:false
         });
         
         console.log("Got media stream:", stream);
