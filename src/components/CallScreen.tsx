@@ -41,43 +41,50 @@ const CallScreen = () => {
     };
   }, []);
 
-  // Initialize PeerJS
+  // Use the existing PeerJS instance from the parent window
   useEffect(() => {
-    const peer = new Peer(undefined, {
-      host: 'localhost',
-      port: 4002,
-      debug: 3,
-      config: {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:global.stun.twilio.com:3478' }
-        ]
-      }
-    });
-
-    peer.on('open', (id) => {
-      console.log('My peer ID is:', id);
-      setMyPeer(peer);
-    });
-
-    peer.on('error', (err) => {
-      console.error('PeerJS error:', err);
-    });
-
-    return () => {
-      peer.destroy();
-    };
+    if (window.opener && window.opener.myPeer) {
+      console.log("Using existing PeerJS instance");
+      setMyPeer(window.opener.myPeer);
+    } else {
+      console.error("No existing PeerJS instance found");
+    }
   }, []);
 
   // Handle video stream and peer connections
   useEffect(() => {
-    if (!myPeer || !socket || !roomId) return;
+    if (!myPeer || !socket) {
+      console.log("Waiting for peer and socket:", { myPeer: !!myPeer, socket: !!socket });
+      return;
+    }
 
     const initializeVideo = async () => {
       try {
+        // First check if mediaDevices is available
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("getUserMedia is not supported in this browser");
+        }
+
+        // List available devices first
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        const audioDevices = devices.filter(device => device.kind === 'audioinput');
+
+        console.log('Available video devices:', videoDevices);
+        console.log('Available audio devices:', audioDevices);
+
+        if (videoDevices.length === 0) {
+          throw new Error("No video devices found");
+        }
+
+        // Try to get media stream with fallback options
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: "user"
+          },
+          audio: audioDevices.length > 0
         });
         
         console.log("Got media stream:", stream);
@@ -86,11 +93,13 @@ const CallScreen = () => {
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
           localVideoRef.current.muted = true;
+          await localVideoRef.current.play().catch(e => console.error("Local video play error:", e));
         }
 
         // Join the room
-        console.log("Attempting to join room:", roomId, "with peer ID:", myPeer.id);
-        socket.emit("join-room", roomId, myPeer.id);
+        const finalRoomId = roomId || "temporary";
+        console.log("Attempting to join room:", finalRoomId, "with peer ID:", myPeer.id);
+        socket.emit("join-room", finalRoomId, myPeer.id);
 
         // Handle incoming calls
         myPeer.on('call', call => {
@@ -101,6 +110,7 @@ const CallScreen = () => {
             console.log('Received remote stream from:', call.peer);
             if (remoteVideoRef.current) {
               remoteVideoRef.current.srcObject = userVideoStream;
+              remoteVideoRef.current.play().catch(e => console.error("Remote video play error:", e));
             }
           });
         });
@@ -116,6 +126,8 @@ const CallScreen = () => {
 
       } catch (error) {
         console.error("Error accessing media devices:", error);
+        // You can add toast notifications here if you want
+        alert(`Failed to access camera/microphone: ${error.message}. Please make sure your camera is connected and you've granted permission to use it.`);
       }
     };
 
@@ -155,8 +167,34 @@ const CallScreen = () => {
     if (remoteStream) {
       remoteStream.getTracks().forEach(track => track.stop());
     }
+    
+    // Emit end call event to the room
+    if (socket && roomId) {
+      socket.emit('end-call', roomId);
+    }
+    
+    // Close this tab
     window.close();
   };
+
+  // Listen for end call event
+  useEffect(() => {
+    if (!socket || !roomId) return;
+
+    socket.on('call-ended', () => {
+      if (myStream) {
+        myStream.getTracks().forEach(track => track.stop());
+      }
+      if (remoteStream) {
+        remoteStream.getTracks().forEach(track => track.stop());
+      }
+      window.close();
+    });
+
+    return () => {
+      socket.off('call-ended');
+    };
+  }, [socket, roomId]);
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
@@ -167,7 +205,7 @@ const CallScreen = () => {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-gray-400">Room ID:</p>
-              <p className="font-mono">{roomId}</p>
+              <p className="font-mono">{roomId || "temporary"}</p>
             </div>
             <div>
               <p className="text-gray-400">Your Peer ID:</p>
