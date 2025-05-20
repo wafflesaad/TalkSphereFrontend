@@ -39,11 +39,13 @@ const UserProfile = () => {
   const [friends, setFriends] = useState<FriendRequest[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const baseURL = import.meta.env.VITE_BASE_URL;
+
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch("http://localhost:4000/api/user/data", {
+        const response = await fetch(`http://${baseURL}:4000/api/user/data`, {
           method: "GET",
           credentials: "include",
         });
@@ -52,7 +54,7 @@ const UserProfile = () => {
 
         if (!data.success) {
           if (data.message === "Token not found!" || data.message.includes("token")) {
-            navigate("/login");
+            navigate("/");
             return;
           }
           throw new Error(data.message || "Failed to fetch user data");
@@ -81,7 +83,7 @@ const UserProfile = () => {
   useEffect(() => {
     const fetchFriendRequests = async () => {
       try {
-        const response = await fetch("http://localhost:4000/api/user/getFriendRequests", {
+        const response = await fetch(`http://${baseURL}:4000/api/user/getFriendRequests`, {
           method: "GET",
           credentials: "include",
         });
@@ -109,7 +111,7 @@ const UserProfile = () => {
 
     const fetchFriends = async () => {
       try {
-        const response = await fetch("http://localhost:4000/api/user/getFriendList", {
+        const response = await fetch(`http://${baseURL}:4000/api/user/getFriendList`, {
           method: "GET",
           credentials: "include",
         });
@@ -155,7 +157,7 @@ const UserProfile = () => {
 
     setIsSearching(true);
     try {
-      const response = await fetch("http://localhost:4000/api/user/search-users", {
+      const response = await fetch(`http://${baseURL}:4000/api/user/search-users`, {
         method: "POST",
         credentials: "include",
         headers: {
@@ -195,7 +197,7 @@ const UserProfile = () => {
 
   const handleSendRequest = async (email: string) => {
     try {
-      const response = await fetch("http://localhost:4000/api/user/sendFriendRequest", {
+      const response = await fetch(`http://${baseURL}:4000/api/user/sendFriendRequest`, {
         method: "POST",
         credentials: "include",
         headers: {
@@ -239,7 +241,7 @@ const UserProfile = () => {
         return;
       }
 
-      const response = await fetch("http://localhost:4000/api/user/acceptFriendRequest", {
+      const response = await fetch(`http://${baseURL}:4000/api/user/acceptFriendRequest`, {
         method: "POST",
         credentials: "include",
         headers: {
@@ -273,7 +275,7 @@ const UserProfile = () => {
 
   const handleRejectRequest = async (email: string) => {
     try {
-      const response = await fetch("http://localhost:4000/api/user/deleteFriendRequest", {
+      const response = await fetch(`http://${baseURL}:4000/api/user/deleteFriendRequest`, {
         method: "POST",
         credentials: "include",
         headers: {
@@ -306,7 +308,7 @@ const UserProfile = () => {
 
   const handleRemoveFriend = async (email: string) => {
     try {
-      const response = await fetch("http://localhost:4000/api/user/remove-friend", {
+      const response = await fetch(`http://${baseURL}:4000/api/user/remove-friend`, {
         method: "POST",
         credentials: "include",
         headers: {

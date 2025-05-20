@@ -20,6 +20,8 @@ const ResetPasswordOTPForm = ({ email, onBack, onViewChange }: ResetPasswordOTPF
     confirmPassword: "",
   });
   const { toast } = useToast();
+  const baseURL = import.meta.env.VITE_BASE_URL;
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +38,7 @@ const ResetPasswordOTPForm = ({ email, onBack, onViewChange }: ResetPasswordOTPF
     }
 
     try {
-      const response = await fetch("http://localhost:4000/api/auth/reset_pass", {
+      const response = await fetch(`http://${baseURL}:4000/api/auth/reset_pass`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -80,7 +82,7 @@ const ResetPasswordOTPForm = ({ email, onBack, onViewChange }: ResetPasswordOTPF
 
   const handleResendOTP = async () => {
     try {
-      const response = await fetch("http://localhost:4000/api/auth/send_reset_otp", {
+      const response = await fetch(`http://${baseURL}:4000/api/auth/send_reset_otp`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -20,6 +20,8 @@ const NewPasswordForm = ({ email, otp, onBack, onViewChange }: NewPasswordFormPr
     confirmPassword: "",
   });
   const { toast } = useToast();
+  const baseURL = import.meta.env.VITE_BASE_URL;
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +38,7 @@ const NewPasswordForm = ({ email, otp, onBack, onViewChange }: NewPasswordFormPr
     }
 
     try {
-      const response = await fetch("http://localhost:4000/api/auth/reset_pass", {
+      const response = await fetch(`http://${baseURL}:4000/api/auth/reset_pass`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

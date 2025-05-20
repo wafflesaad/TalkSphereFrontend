@@ -11,13 +11,15 @@ const VerifyEmailForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const baseURL = import.meta.env.VITE_BASE_URL;
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:4000/api/auth/verify_email", {
+      const response = await fetch(`http://${baseURL}:4000/api/auth/verify_email`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -56,7 +58,7 @@ const VerifyEmailForm = () => {
 
   const handleResendOTP = async () => {
     try {
-      const response = await fetch("http://localhost:4000/api/auth/send_verify_otp", {
+      const response = await fetch(`http://${baseURL}:4000/api/auth/send_verify_otp`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

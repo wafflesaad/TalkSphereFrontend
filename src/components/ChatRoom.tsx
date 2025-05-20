@@ -83,6 +83,8 @@ const ChatRoom = () => {
   const [selfStream, setSelfStream] = useState<MediaStream | null>(null);
   const [roomId, setRoomId] = useState<string | null>(null);
   const [isInCall, setIsInCall] = useState(false);
+  const baseURL = import.meta.env.VITE_BASE_URL;
+
 
   const initializeVideoCall = async () => {
     if (!myPeer) return;
@@ -297,7 +299,7 @@ const ChatRoom = () => {
     // Fetch friends list
     const fetchFriends = async () => {
       try {
-        const response = await fetch("http://localhost:4000/api/user/getFriendList", {
+        const response = await fetch(`http://${baseURL}:4000/api/user/getFriendList`, {
           method: "GET",
           credentials: "include",
         });
@@ -321,7 +323,7 @@ const ChatRoom = () => {
     if (!newMessage.trim()) return;
 
     try {
-      const response = await fetch("http://localhost:4000/api/user/data", {
+      const response = await fetch(`http://${baseURL}:4000/api/user/data`, {
         method: "GET",
         credentials: "include",
       });
@@ -371,7 +373,7 @@ const ChatRoom = () => {
     setSelectedFriend(friend);
 
     try {
-      const response = await fetch("http://localhost:4000/api/user/data", {
+      const response = await fetch(`http://${baseURL}:4000/api/user/data`, {
         method: "GET",
         credentials: "include",
       });
@@ -588,7 +590,7 @@ const ChatRoom = () => {
     if (!selectedFriend || !myPeer) return;
 
     try {
-      const response = await fetch("http://localhost:4000/api/user/data", {
+      const response = await fetch(`http://${baseURL}:4000/api/user/data`, {
         method: "GET",
         credentials: "include",
       });
@@ -651,7 +653,7 @@ const ChatRoom = () => {
     setVideoCallRequest(false);
 
     try {
-      const response = await fetch("http://localhost:4000/api/user/data", {
+      const response = await fetch(`http://${baseURL}:4000/api/user/data`, {
         method: "GET",
         credentials: "include",
       });

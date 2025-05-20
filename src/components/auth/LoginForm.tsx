@@ -19,6 +19,7 @@ const LoginForm = ({ onViewChange }: LoginFormProps) => {
   });
   const { toast } = useToast();
   const navigate = useNavigate();
+  const baseURL = import.meta.env.VITE_BASE_URL;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -28,9 +29,9 @@ const LoginForm = ({ onViewChange }: LoginFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
+console.log(baseURL);
     try {
-      const response = await fetch("http://localhost:4000/api/auth/login", {
+      const response = await fetch(`http://${baseURL}:4000/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
