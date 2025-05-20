@@ -13,6 +13,8 @@ import socket from "@/utils/io";
 import { error } from "console";
 import Peer from "peerjs";
 import { io } from "socket.io-client";
+const baseURL = import.meta.env.VITE_BASE_URL;
+console.log(`::chatroom.tsx   ${baseURL}`);
 import {
   Dialog,
   DialogContent,
@@ -29,7 +31,7 @@ declare global {
 }
 
 // Initialize video socket connection
-const videoSocket = io("http://localhost:4001", {
+const videoSocket = io(`http://${baseURL}:4001`, {
   withCredentials: true,
   transports: ["websocket"],
   reconnection: true,

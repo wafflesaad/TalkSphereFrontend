@@ -17,10 +17,13 @@ const CallScreen = () => {
   const searchParams = new URLSearchParams(location.search);
   const roomId = searchParams.get('room');
   const peerId = searchParams.get('peer');
+  const baseURL = import.meta.env.VITE_BASE_URL;
+  console.log(`::callscreen.tsx   ${baseURL}`);
+
 
   // Initialize Socket.IO
   useEffect(() => {
-    const newSocket = io("http://localhost:4001", {
+    const newSocket = io(`http://${baseURL}:4001`, {
       withCredentials: true,
       transports: ["websocket"],
       reconnection: true,
