@@ -1,3 +1,5 @@
+
+
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -416,64 +418,30 @@ const ChatRoom = () => {
     }, 1000);
   };
 
-  const handleVideoCall = async () => {
-    if (!selectedFriend || !myPeer || isInCall) return;
+  // Add effect to handle call ended
+  useEffect(() => {
+    socket.on('call-ended', () => {
+      setIsInCall(false);
+      setVideoCallRequest(false);
+      setRemotePeerId(null);
+      setRoomId(null);
+    });
 
-    try {
-      const response = await fetch("http://localhost:4000/api/user/data", {
-        method: "GET",
-        credentials: "include",
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.message);
-      }
-
-      let email = data.userData.email;
-
-      // Create room ID using the same format as server.js
-      const roomId = [email, selectedFriend.email].sort().join('-');
-      
-      // Set in call state
-      setIsInCall(true);
-      
-      // Check if call window is already open
-      const callWindow = window.open('', 'videoCall');
-      if (callWindow && !callWindow.closed) {
-        callWindow.location.href = `/callscreen?room=${roomId}&peer=${myPeer.id}`;
-      } else {
-        window.open(`/callscreen?room=${roomId}&peer=${myPeer.id}`, 'videoCall');
-      }
-
-      // Send video call request to friend
-      let payload = {
-        sender: email,
-        receiver: selectedFriend.email,
-        message: "_video",
-        peerId: myPeer.id,
-        roomId: roomId
-      };
-      
-      socket.emit("sendMessage", payload);
-
-    } catch (e) {
-      console.log(e.message);
-      toast({
-        title: "Error",
-        description: "Failed to initiate video call: " + e.message,
-        variant: "destructive"
-      });
-    }
-  };
+    return () => {
+      socket.off('call-ended');
+    };
+  }, [socket]);
 
   const handleEndVideoCall = () => {
     if (myStream) {
       myStream.getTracks().forEach(track => track.stop());
       setMyStream(null);
     }
+    setIsInCall(false);
     setIsVideoCallOpen(false);
+    setVideoCallRequest(false);
+    setRemotePeerId(null);
+    setRoomId(null);
 
     if (selectedFriend) {
       socket.emit('endVideoCall', {
@@ -615,8 +583,71 @@ const ChatRoom = () => {
     };
   }, [selfStream]);
 
+  
+  const handleVideoCall = async () => {
+    if (!selectedFriend || !myPeer) return;
+
+    try {
+      const response = await fetch("http://localhost:4000/api/user/data", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.message);
+      }
+
+      let email = data.userData.email;
+
+      // Create room ID using the same format as server.js
+      const roomId = [email, selectedFriend.email].sort().join('-');
+      
+      // Set in call state
+      setIsInCall(true);
+      
+      // Check if call window is already open
+      const callWindow = window.open('', 'videoCall');
+      if (callWindow && !callWindow.closed) {
+        if (roomId){
+
+          callWindow.location.href = `/callscreen?room=${roomId}&peer=${myPeer.id}`;
+        }
+      } else {
+        if(roomId){
+
+          window.open(`/callscreen?room=${roomId}&peer=${myPeer.id}`, 'videoCall');
+        }
+      }
+
+      // Send video call request to friend
+      let payload = {
+        sender: email,
+        receiver: selectedFriend.email,
+        message: "_video",
+        peerId: myPeer.id,
+        roomId: roomId
+      };
+      
+      socket.emit("sendMessage", payload);
+
+    } catch (e) {
+      console.log(e.message);
+      toast({
+        title: "Error",
+        description: "Failed to initiate video call: " + e.message,
+        variant: "destructive"
+      });
+      // Reset call state on error
+      setIsInCall(false);
+      setVideoCallRequest(false);
+      setRemotePeerId(null);
+      setRoomId(null);
+    }
+  };
   const handleAcceptVideoCall = async () => {
-    if (isInCall) return;
+
     setVideoCallRequest(false);
 
     try {
@@ -653,9 +684,14 @@ const ChatRoom = () => {
       // Check if call window is already open
       const callWindow = window.open('', 'videoCall');
       if (callWindow && !callWindow.closed) {
-        callWindow.location.href = `/callscreen?room=${roomId}&peer=${remotePeerId}`;
+        if(roomId){
+          callWindow.location.href = `/callscreen?room=${roomId}&peer=${remotePeerId}`;
+        }
       } else {
-        window.open(`/callscreen?room=${roomId}&peer=${remotePeerId}`, 'videoCall');
+        if (roomId){
+
+          window.open(`/callscreen?room=${roomId}&peer=${remotePeerId}`, 'videoCall');
+        }
       }
 
     } catch (e) {
@@ -667,17 +703,6 @@ const ChatRoom = () => {
       });
     }
   };
-
-  // Add effect to handle call ended
-  useEffect(() => {
-    socket.on('call-ended', () => {
-      setIsInCall(false);
-    });
-
-    return () => {
-      socket.off('call-ended');
-    };
-  }, [socket]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-200">
@@ -895,3 +920,4 @@ const ChatRoom = () => {
 };
 
 export default ChatRoom; 
+
