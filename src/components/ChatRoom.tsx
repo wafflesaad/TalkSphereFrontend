@@ -189,6 +189,9 @@ const ChatRoom = () => {
 
   // Initialize PeerJS
   useEffect(() => {
+    console.log("peer url");
+    console.log(peerUrl);
+    
     const peer = new Peer(undefined, {
       host: `${peerUrl}`,
       port: 443,
