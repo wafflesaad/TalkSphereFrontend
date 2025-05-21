@@ -285,6 +285,8 @@ const ChatRoom = () => {
       } else if (message === "_video_accepted") {
         setVideoCallRequest(false);
         // Open CallScreen in new tab
+        setRemotePeerId(peerId); // Ensure this is set correctly
+    setRoomId(roomId);
         window.open(`/callscreen?room=${roomId}&peer=${peerId}`, '_blank');
       } else {
         setMessages(prev => [...prev, {
