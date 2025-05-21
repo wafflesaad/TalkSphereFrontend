@@ -193,17 +193,17 @@ const ChatRoom = () => {
     console.log(peerUrl);
     
     const peer = new Peer(undefined, {
-      host: `${peerUrl}`,
+      host: `peerjs.com`,
       port: 443,
       path: '/',
       debug: 3,
       secure: true,
-      config: {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:global.stun.twilio.com:3478' }
-        ]
-      }
+      // config: {
+      //   iceServers: [
+      //     { urls: 'stun:stun.l.google.com:19302' },
+      //     { urls: 'stun:global.stun.twilio.com:3478' }
+      //   ]
+      // }
     });
 
     peer.on('open', (id) => {
