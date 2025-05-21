@@ -19,11 +19,11 @@ const CallScreen = () => {
   const peerId = searchParams.get('peer');
   const baseURL = import.meta.env.VITE_BASE_URL;
   console.log(`::callscreen.tsx   ${baseURL}`);
-
+  const callUrl = import.meta.env.VITE_CALL
 
   // Initialize Socket.IO
   useEffect(() => {
-    const newSocket = io(`http://${baseURL}:4001`, {
+    const newSocket = io(`${callUrl}`, {
       withCredentials: true,
       transports: ["websocket"],
       reconnection: true,

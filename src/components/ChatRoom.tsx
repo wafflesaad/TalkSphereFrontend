@@ -14,6 +14,8 @@ import { error } from "console";
 import Peer from "peerjs";
 import { io } from "socket.io-client";
 const baseURL = import.meta.env.VITE_BASE_URL;
+const serverUrl = import.meta.env.VITE_SERVER
+const callUrl = import.meta.env.VITE_CALL
 console.log(`::chatroom.tsx   ${baseURL}`);
 import {
   Dialog,
@@ -31,7 +33,7 @@ declare global {
 }
 
 // Initialize video socket connection
-const videoSocket = io(`http://${baseURL}:4001`, {
+const videoSocket = io(`${callUrl}`, {
   withCredentials: true,
   transports: ["websocket"],
   reconnection: true,
@@ -86,7 +88,7 @@ const ChatRoom = () => {
   const [roomId, setRoomId] = useState<string | null>(null);
   const [isInCall, setIsInCall] = useState(false);
   const baseURL = import.meta.env.VITE_BASE_URL;
-
+  const peerUrl = import.meta.env.VITE_PEER;
 
   const initializeVideoCall = async () => {
     if (!myPeer) return;
@@ -188,9 +190,11 @@ const ChatRoom = () => {
   // Initialize PeerJS
   useEffect(() => {
     const peer = new Peer(undefined, {
-      host: 'localhost',
-      port: 4002,
+      host: `${peerUrl}`,
+      port: 443,
+      path: '/',
       debug: 3,
+      secure: true,
       config: {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
@@ -301,7 +305,7 @@ const ChatRoom = () => {
     // Fetch friends list
     const fetchFriends = async () => {
       try {
-        const response = await fetch(`http://${baseURL}:4000/api/user/getFriendList`, {
+        const response = await fetch(`${serverUrl}/api/user/getFriendList`, {
           method: "GET",
           credentials: "include",
         });
@@ -325,7 +329,7 @@ const ChatRoom = () => {
     if (!newMessage.trim()) return;
 
     try {
-      const response = await fetch(`http://${baseURL}:4000/api/user/data`, {
+      const response = await fetch(`${serverUrl}/api/user/data`, {
         method: "GET",
         credentials: "include",
       });
@@ -375,7 +379,7 @@ const ChatRoom = () => {
     setSelectedFriend(friend);
 
     try {
-      const response = await fetch(`http://${baseURL}:4000/api/user/data`, {
+      const response = await fetch(`${serverUrl}/api/user/data`, {
         method: "GET",
         credentials: "include",
       });
@@ -592,7 +596,7 @@ const ChatRoom = () => {
     if (!selectedFriend || !myPeer) return;
 
     try {
-      const response = await fetch(`http://${baseURL}:4000/api/user/data`, {
+      const response = await fetch(`${serverUrl}/api/user/data`, {
         method: "GET",
         credentials: "include",
       });
@@ -655,7 +659,7 @@ const ChatRoom = () => {
     setVideoCallRequest(false);
 
     try {
-      const response = await fetch(`http://${baseURL}:4000/api/user/data`, {
+      const response = await fetch(`${serverUrl}/api/user/data`, {
         method: "GET",
         credentials: "include",
       });

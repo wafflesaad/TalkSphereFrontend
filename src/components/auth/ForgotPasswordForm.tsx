@@ -15,14 +15,14 @@ const ForgotPasswordForm = ({ onViewChange }: ForgotPasswordFormProps) => {
   const [showOTPForm, setShowOTPForm] = useState(false);
   const { toast } = useToast();
   const baseURL = import.meta.env.VITE_BASE_URL;
-
+  const serverUrl = import.meta.env.VITE_SERVER;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const response = await fetch(`http://${baseURL}:4000/api/auth/send_reset_otp`, {
+      const response = await fetch(`${serverUrl}/api/auth/send_reset_otp`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

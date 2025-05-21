@@ -44,7 +44,7 @@ const TopBar = ({
   const location = useLocation();
   const { toast } = useToast();
   const baseURL = import.meta.env.VITE_BASE_URL;
-
+  const serverUrl = import.meta.env.VITE_SERVER
 
   useEffect(() => {
     document.documentElement.classList.add('dark');
@@ -53,7 +53,7 @@ const TopBar = ({
   useEffect(() => {
     const fetchFriendRequests = async () => {
       try {
-        const response = await fetch(`http://${baseURL}:4000/api/user/getFriendRequests`, {
+        const response = await fetch(`${serverUrl}/api/user/getFriendRequests`, {
           method: "GET",
           credentials: "include",
         });
@@ -76,7 +76,7 @@ const TopBar = ({
   useEffect(() => {
     const fetchFriends = async () => {
       try {
-        const response = await fetch(`http://${baseURL}:4000/api/user/getFriendList`, {
+        const response = await fetch(`${serverUrl}/api/user/getFriendList`, {
           method: "GET",
           credentials: "include",
         });
@@ -108,7 +108,7 @@ const TopBar = ({
 
   const handleAcceptRequest = async (email: string) => {
     try {
-      const response = await fetch(`http://${baseURL}:4000/api/user/acceptFriendRequest`, {
+      const response = await fetch(`${serverUrl}/api/user/acceptFriendRequest`, {
         method: "POST",
         credentials: "include",
         headers: {
@@ -130,7 +130,7 @@ const TopBar = ({
 
   const handleRejectRequest = async (email: string) => {
     try {
-      const response = await fetch(`http://${baseURL}:4000/api/user/deleteFriendRequest`, {
+      const response = await fetch(`${serverUrl}/api/user/deleteFriendRequest`, {
         method: "POST",
         credentials: "include",
         headers: {
@@ -151,7 +151,7 @@ const TopBar = ({
 
   const handleRemoveFriend = async (email: string) => {
     try {
-      const response = await fetch(`http://${baseURL}:4000/api/user/remove-friend`, {
+      const response = await fetch(`${serverUrl}/api/user/remove-friend`, {
         method: "POST",
         credentials: "include",
         headers: {
@@ -184,7 +184,7 @@ const TopBar = ({
     }
     
     try {
-      const response = await fetch(`http://${baseURL}:4000/api/user/check-user`, {
+      const response = await fetch(`${serverUrl}/api/user/check-user`, {
         method: "POST",
         credentials: "include",
         headers: {
@@ -218,7 +218,7 @@ const TopBar = ({
 
   const handleSendFriendRequest = async (email: string) => {
     try {
-      const response = await fetch(`http://${baseURL}:4000/api/user/sendFriendRequest`, {
+      const response = await fetch(`${serverUrl}/api/user/sendFriendRequest`, {
         method: "POST",
         credentials: "include",
         headers: {

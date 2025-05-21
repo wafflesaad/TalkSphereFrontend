@@ -21,7 +21,7 @@ const SignupForm = ({ onViewChange }: SignupFormProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const baseURL = import.meta.env.VITE_BASE_URL;
-
+  const serverUrl = import.meta.env.VITE_SERVER;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -33,7 +33,7 @@ const SignupForm = ({ onViewChange }: SignupFormProps) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`http://${baseURL}:4000/api/auth/register`, {
+      const response = await fetch(`${serverUrl}/api/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
