@@ -713,17 +713,17 @@ const ChatRoom = () => {
         console.log("selectedFriend", selectedFriend);
         console.log("roomId", roomId);
         console.log("remotePeerId", remotePeerId);
-        
-
-        const callWindow = window.open('', 'videoCall');
-        if (callWindow && !callWindow.closed) {
-          callWindow.location.href = `/callscreen?room=${roomId}&peer=${remotePeerId}`;
-        } else {
-          window.open(`/callscreen?room=${roomId}&peer=${remotePeerId}`, 'videoCall');
-        }
-      } else {
-        console.warn("Call screen not opened: roomId or remotePeerId is undefined");
+        window.open(`/callscreen?room=${roomId}&peer=${remotePeerId}`, 'videoCall');
       }
+      //   const callWindow = window.open('', 'videoCall');
+      //   if (callWindow && !callWindow.closed) {
+      //     callWindow.location.href = `/callscreen?room=${roomId}&peer=${remotePeerId}`;
+      //   } else {
+          
+      //   }
+      // } else {
+      //   console.warn("Call screen not opened: roomId or remotePeerId is undefined");
+      // }
 
 
     } catch (e) {
